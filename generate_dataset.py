@@ -85,8 +85,23 @@ def to_uint8_image(img_array):
     Safely rescales a float array to 0-255 and converts it to uint8.
     This prevents underflow/overflow artifacts when saving normal distributions.
     """
-    img_rescaled = cv2.normalize(img_array, None, 0, 255, cv2.NORM_MINMAX)
-    return img_rescaled.astype(np.uint8)
+
+    M = 0.0 # depends on muimg
+    S = 1.0 # depends on sigimg
+    std_dev_range = 4.0 # how many standard deviations to include
+
+    # Define fixed bounds
+    fixed_min = M - (std_dev_range * S)
+    fixed_max = M + (std_dev_range * S)
+
+    # Perform fixed normalization
+    # Formula: (val - min) / (max - min) * 255
+    img_normalized = (img_array - fixed_min) / (fixed_max - fixed_min) * 255
+
+    # Clip values to ensure they stay in [0, 255] before converting to uint8
+    img_uint8 = np.clip(img_normalized, 0, 255).astype(np.uint8)
+
+    return img_uint8
 
 def run(data_path: str, num_datasets: int, image_dim: int, lump_width: float, alpha: float, radius: float, generate_absent: bool, generate_present: bool) -> None:
     print("========================================")
