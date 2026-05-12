@@ -63,3 +63,50 @@ def disk_signal(dim, alpha, radius, pos=None):
     img[circle] = alpha
 
     return img
+
+def gaussian_signal(dim, sigma, alpha, pos=None):
+    """
+    Generate an image of a Gaussian.
+
+    Parameters
+    ----------
+    dim : int or tuple/list of two ints
+        Image dimensions. If a single int is given, image is square (dim x dim).
+    sigma : float
+        Standard deviation of the Gaussian.
+    alpha : float
+        Magnitude (peak value) of the Gaussian.
+    pos : tuple/list of two floats (x, y), optional
+        Position of the Gaussian center in (x, y) coordinates.
+        If None, the Gaussian is centered in the image.
+
+    Returns
+    -------
+    img : np.ndarray
+        2D image array of shape (dim[0], dim[1]) containing the Gaussian.
+    """
+    
+    # If dim is a single int, make it square as [dim, dim]
+    if isinstance(dim, int):
+        dim = (dim, dim)
+    elif len(dim) == 1:
+        dim = (dim[0], dim[0])
+
+    # If pos is not given, center the Gaussian in the image
+    if pos is None:
+        dim_arr = np.array(dim, dtype=float)
+        pos = np.flip((dim_arr - 1) / 2.0)  # gives [x_center, y_center]
+    else:
+        pos = np.array(pos, dtype=float)
+
+    # Create coordinate grid
+    rows, cols = dim
+    x = np.arange(cols)     # 0 .. cols-1
+    y = np.arange(rows)     # 0 .. rows-1
+    X, Y = np.meshgrid(x, y)  # X,Y both shape (rows, cols)
+
+    # Generate the Gaussian signal
+    # MATLAB: alpha * exp(-(1/(2*sigma^2)) * ((X-pos(1)).^2 + (Y-pos(2)).^2))
+    img = alpha * np.exp(-(1 / (2 * sigma**2)) * ((X - pos[0])**2 + (Y - pos[1])**2))
+
+    return img
