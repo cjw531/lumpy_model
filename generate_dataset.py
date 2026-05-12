@@ -9,7 +9,7 @@ from tqdm import tqdm
 from mvn_lumpy import mvn_type_2_lumpy 
 
 # Assuming you still want to use the same signal generator from your reference
-from signal_present import disk_signal 
+from signal_present import * 
 
 np.random.seed(0)
 
@@ -66,6 +66,21 @@ def parse_args() -> argparse.Namespace:
         help="Radius value for the disk signal (float, default: 2.0)",
     )
 
+    # Optional parameters for signal type
+    parser.add_argument(
+        "--signal_type",
+        type=str,
+        choices=["disk", "gaussian"],
+        default="disk",
+        help="Type of signal to insert: 'disk' or 'gaussian' (default: disk)",
+    )
+    parser.add_argument(
+        "--sigma",
+        type=float,
+        default=1.0,
+        help="Standard deviation for the gaussian signal (default: 1.0). Ignored if signal_type is 'disk'.",
+    )
+
     return parser.parse_args()
 
 def save_config(args):
@@ -103,12 +118,14 @@ def to_uint8_image(img_array):
 
     return img_uint8
 
-def run(data_path: str, num_datasets: int, image_dim: int, lump_width: float, alpha: float, radius: float, generate_absent: bool, generate_present: bool) -> None:
+def run(data_path: str, num_datasets: int, image_dim: int, lump_width: float, alpha: float, radius: float, \
+        sigma: float, signal_type: str, generate_absent: bool, generate_present: bool) -> None:
     print("========================================")
     print(f"Generating {num_datasets} datasets in {data_path}")
     print(f"Image dimension: {image_dim}x{image_dim}")
     print(f"Lump Width (Background): {lump_width}")
-    print(f"Signal Alpha: {alpha} | Signal Radius: {radius}")
+    print(f"Signal Type: {signal_type}")
+    print(f"Signal Alpha: {alpha} | Signal Radius (Disk): {radius} | Signal Sigma (Gaussian): {sigma}")
     print(f"Generate signal absent images: {generate_absent}")
     print(f"Generate signal present images: {generate_present}")
     print("========================================")
@@ -140,7 +157,12 @@ def run(data_path: str, num_datasets: int, image_dim: int, lump_width: float, al
 
     # Pre-generate the signal (assuming the signal is identical across the dataset)
     if generate_present:
-        signal = disk_signal(image_dim, alpha, radius)
+        if signal_type == "disk":
+            signal = disk_signal(image_dim, alpha, radius)
+        elif signal_type == "gaussian":
+            signal = gaussian_signal(image_dim, sigma, alpha)
+        else:
+            raise ValueError(f"Unknown signal_type: {signal_type}")
 
     ''' Generate datasets '''
     for i in tqdm(range(num_datasets), total=num_datasets, desc="Generating datasets"):
@@ -178,10 +200,16 @@ def run(data_path: str, num_datasets: int, image_dim: int, lump_width: float, al
 if __name__ == "__main__":
     """
     Usage:
-        python generate_dataset.py <outdir> <num_datasets> <image_dim> <lump_width> [--alpha ALPHA] [--radius RADIUS] [--absent] [--present]
+        python generate_dataset.py <outdir> <num_datasets> <image_dim> <lump_width> \
+            [--alpha ALPHA] [--radius RADIUS] [--signal_type {disk,gaussian}] [--sigma SIGMA] \
+            [--absent] [--present]
     
-    Example:
-        python generate_dataset.py ./data/ 20000 64 5.0 --alpha 0.3 --radius 2.0 --absent --present
+    Examples:
+        # Generate a dataset using the default circular DISK signal
+        python generate_dataset.py ./data_disk/ 20000 64 5.0 --signal_type disk --alpha 0.3 --radius 2.0 --absent --present
+        
+        # Generate a dataset using a GAUSSIAN signal
+        python generate_dataset.py ./data_gauss/ 20000 64 5.0 --signal_type gaussian --alpha 1.5 --sigma 1.5 --absent --present
     """
 
     args = parse_args()
@@ -194,6 +222,8 @@ if __name__ == "__main__":
         lump_width=args.lump_width,
         alpha=args.alpha, 
         radius=args.radius, 
+        sigma=args.sigma,
+        signal_type=args.signal_type,
         generate_absent=args.absent, 
         generate_present=args.present
     )
